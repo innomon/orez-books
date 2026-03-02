@@ -1,0 +1,45 @@
+# Implementation Plan: Frappe Books Re-architecture (Electron to Wails)
+
+## Phase 1: Preparation & Setup
+- [ ] Research and Document Electron-specific API usage.
+- [ ] Initialize Wails project in the root directory.
+  - `wails init -n orez-books -t vue`
+- [ ] Configure `wails.json` and project structure.
+- [ ] Integrate existing Vue 3 frontend (from `/src/renderer`) into Wails frontend directory (`/frontend`).
+- [ ] Verify frontend build pipeline works with Wails.
+
+## Phase 2: Backend Logic Migration (Go)
+- [ ] Implement Go-based SQLite integration.
+  - [ ] Choose SQLite driver (`github.com/mattn/go-sqlite3` or `modernc.org/sqlite`).
+  - [ ] Implement database connection and management logic in Go.
+- [ ] Port business logic from Electron's main process to Go methods.
+  - [ ] Identify and port file system operations.
+  - [ ] Identify and port data processing tasks.
+- [ ] Set up GORM or equivalent Go-based query builder.
+- [ ] Implement database migrations in Go.
+
+## Phase 3: Communication Bridge (IPC to Bindings)
+- [ ] Define Go methods to be exposed to the frontend.
+- [ ] Use `wails generate bindings` to create the JS client.
+- [ ] Replace `ipcRenderer` calls in the frontend with Wails bindings.
+- [ ] Verify data flow between Go backend and Vue frontend.
+
+## Phase 4: Native Features & OS Integration
+- [ ] Implement application menus and tray icons using Wails APIs.
+- [ ] Port native dialogs (Open, Save, Alerts) to Wails runtime.
+- [ ] Replace `electron-store` with Go-based persistent configuration (e.g., using `os.UserConfigDir`).
+- [ ] Implement window management logic (maximize, minimize, close) using Wails runtime.
+
+## Phase 5: Testing & Optimization
+- [ ] Conduct unit tests for Go backend logic.
+- [ ] Perform integration tests for frontend-backend communication.
+- [ ] Verify SQLite database compatibility and migration success.
+- [ ] Optimize Go binary size and runtime memory footprint.
+- [ ] Test cross-platform builds (macOS, Windows, Linux).
+
+## Phase 6: Finalization & Distribution
+- [ ] Configure `wails build` for all target platforms.
+- [ ] Set up automated CI/CD for building releases.
+- [ ] Verify auto-update mechanisms (if applicable).
+- [ ] Create installation packages (DMG, EXE, DEB/RPM).
+- [ ] Document the new build and development processes.
