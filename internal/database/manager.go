@@ -5,9 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"gorm.io/driver/sqlite"
+	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
-	_ "modernc.org/sqlite"
 )
 
 type Manager struct {

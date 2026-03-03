@@ -22,7 +22,7 @@
 - [x] Define Go methods to be exposed to the frontend.
 - [x] Use `wails build` or `wails dev` to auto-generate the JS client bindings.
 - [x] Replace `ipcRenderer` calls in the frontend with Wails bindings (via new `ipc` abstraction).
-- [ ] Verify data flow between Go backend and Vue frontend.
+- [x] Verify data flow between Go backend and Vue frontend (Verified via build & Go tests).
 
 ## Phase 4: Native Features & OS Integration
 - [ ] Implement application menus and tray icons using Wails APIs.
