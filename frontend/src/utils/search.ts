@@ -10,8 +10,8 @@ import { safeParseFloat } from 'utils/index';
 import { RouteLocationRaw } from 'vue-router';
 import { fuzzyMatch } from '.';
 import { getFormRoute, routeTo } from './ui';
-import { searchGroups } from '../../utils/types';
-import type { SearchGroup, SearchItem } from '../../utils/types';
+import { searchGroups } from './types';
+import type { SearchGroup, SearchItem } from './types';
 
 export { searchGroups };
 export type { SearchGroup, SearchItem };

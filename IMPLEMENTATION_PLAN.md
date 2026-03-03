@@ -6,21 +6,21 @@
   - `wails init -n orez-books -t vue`
 - [x] Configure `wails.json` and project structure.
 - [x] Integrate existing Vue 3 frontend (from source repo) into Wails frontend directory (`/frontend`).
-- [ ] Verify frontend build pipeline works with Wails.
+- [x] Verify frontend build pipeline works with Wails.
 
 ## Phase 2: Backend Logic Migration (Go)
 - [ ] Implement Go-based SQLite integration.
   - [x] Choose SQLite driver (`modernc.org/sqlite` chosen for Cgo-free experience).
   - [x] Implement database connection and management logic in Go.
-- [ ] Port business logic from Electron's main process to Go methods.
-  - [ ] Identify and port file system operations.
-  - [ ] Identify and port data processing tasks.
-- [ ] Set up GORM or equivalent Go-based query builder.
+- [x] Port business logic from Electron's main process to Go methods.
+  - [x] Identify and port file system operations.
+  - [x] Identify and port data processing tasks.
+- [x] Set up GORM or equivalent Go-based query builder.
 - [ ] Implement database migrations in Go.
 
 ## Phase 3: Communication Bridge (IPC to Bindings)
-- [ ] Define Go methods to be exposed to the frontend.
-- [ ] Use `wails generate bindings` to create the JS client.
+- [x] Define Go methods to be exposed to the frontend.
+- [ ] Use `wails build` or `wails dev` to auto-generate the JS client bindings.
 - [ ] Replace `ipcRenderer` calls in the frontend with Wails bindings.
 - [ ] Verify data flow between Go backend and Vue frontend.
 
