@@ -150,5 +150,56 @@ type GetBalanceSheetResult struct {
 	Items []BalanceSheetItem `json:"items"`
 }
 
+// ListAccountsArgs contains parameters for listing accounts.
+type ListAccountsArgs struct {
+	RootType string `json:"root_type" jsonschema:"optional,Filter by Asset, Liability, Equity, Income, Expense"`
+}
+
+// AccountItem represents a single account in the COA.
+type AccountItem struct {
+	Name          string `json:"name"`
+	RootType      string `json:"root_type"`
+	AccountType   string `json:"account_type"`
+	ParentAccount string `json:"parent_account"`
+	IsGroup       bool   `json:"is_group"`
+}
+
+// ListAccountsResult is the response returned when listing accounts.
+type ListAccountsResult struct {
+	Accounts []AccountItem `json:"accounts"`
+}
+
+// CreateAccountArgs contains parameters for creating a new account.
+type CreateAccountArgs struct {
+	Name          string `json:"name" jsonschema:"required,Account Name"`
+	RootType      string `json:"root_type" jsonschema:"required,Asset, Liability, Equity, Income, or Expense"`
+	AccountType   string `json:"account_type" jsonschema:"optional,e.g. Bank, Cash, Receivable, Payable"`
+	ParentAccount string `json:"parent_account" jsonschema:"optional,Name of the parent group account"`
+	IsGroup       bool   `json:"is_group" jsonschema:"optional,True if this is a folder for other accounts"`
+}
+
+// UpdateAccountArgs contains parameters for modifying an account.
+type UpdateAccountArgs struct {
+	Name    string                 `json:"name" jsonschema:"required,Current name of the account to update"`
+	Updates map[string]interface{} `json:"updates" jsonschema:"required,Map of fields to update (e.g. parent_account, accountType)"`
+}
+
+// JournalAccountInput represents a single account line in a journal entry.
+type JournalAccountInput struct {
+	Account string  `json:"account" jsonschema:"required,Account Name"`
+	Debit   float64 `json:"debit" jsonschema:"optional,Debit amount"`
+	Credit  float64 `json:"credit" jsonschema:"optional,Credit amount"`
+}
+
+// CreateJournalEntryArgs contains parameters for creating a journal entry.
+type CreateJournalEntryArgs struct {
+	EntryType string                `json:"entryType" jsonschema:"required,e.g. Journal Entry, Bank Entry, Cash Entry"`
+	Date      string                `json:"date" jsonschema:"required,YYYY-MM-DD"`
+	Accounts  []JournalAccountInput `json:"accounts" jsonschema:"required,List of account entries (debits and credits)"`
+	Remark    string                `json:"userRemark" jsonschema:"optional,Internal notes"`
+}
+
+
+
 
 

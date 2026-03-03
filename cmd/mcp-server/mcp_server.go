@@ -70,6 +70,21 @@ func (m *MCPServer) registerTools() {
 	}, m.getBalanceSheet)
 
 	mcp.AddTool(m.server, &mcp.Tool{
+		Name:        "list_accounts",
+		Description: "Export the full Chart of Accounts",
+	}, m.listAccounts)
+
+	mcp.AddTool(m.server, &mcp.Tool{
+		Name:        "create_account",
+		Description: "Add a new account to the Chart of Accounts (Import)",
+	}, m.createAccount)
+
+	mcp.AddTool(m.server, &mcp.Tool{
+		Name:        "update_account",
+		Description: "Modify an existing account in the Chart of Accounts",
+	}, m.updateAccount)
+
+	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "create_party",
 		Description: "Create a new Customer or Supplier",
 	}, m.createParty)
@@ -83,6 +98,11 @@ func (m *MCPServer) registerTools() {
 		Name:        "create_invoice",
 		Description: "Create a new Sales or Purchase invoice with line items",
 	}, m.createInvoice)
+
+	mcp.AddTool(m.server, &mcp.Tool{
+		Name:        "create_journal_entry",
+		Description: "Create a manual or automated Journal Entry (Bank, Cash, Contra, etc.)",
+	}, m.createJournalEntry)
 }
 
 // listParties handles the list_parties tool call.
@@ -337,6 +357,126 @@ func (m *MCPServer) getBalanceSheet(ctx context.Context, req *mcp.CallToolReques
 	}, GetBalanceSheetResult{Items: results}, nil
 }
 
+// listAccounts handles the list_accounts tool call.
+func (m *MCPServer) listAccounts(ctx context.Context, req *mcp.CallToolRequest, args ListAccountsArgs) (*mcp.CallToolResult, ListAccountsResult, error) {
+	db := m.dbManager.GetDB()
+	var accounts []AccountItem
+
+	query := db.Table("Account").Select("name, rootType as root_type, accountType as account_type, parentAccount as parent_account, isGroup as is_group")
+	if args.RootType != "" {
+		query = query.Where("rootType = ?", args.RootType)
+	}
+
+	err := query.Find(&accounts).Error
+	if err != nil {
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("Error fetching accounts: %v", err)}},
+			IsError: true,
+		}, ListAccountsResult{}, nil
+	}
+
+	var text string
+	for _, a := range accounts {
+		groupSuffix := ""
+		if a.IsGroup {
+			groupSuffix = " (Group)"
+		}
+		text += fmt.Sprintf("- %s: %s / %s%s\n", a.Name, a.RootType, a.AccountType, groupSuffix)
+	}
+
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{&mcp.TextContent{Text: text}},
+	}, ListAccountsResult{Accounts: accounts}, nil
+}
+
+// createAccount handles the create_account tool call.
+func (m *MCPServer) createAccount(ctx context.Context, req *mcp.CallToolRequest, args CreateAccountArgs) (*mcp.CallToolResult, map[string]interface{}, error) {
+	db := m.dbManager.GetDB()
+	now := time.Now().Format("2006-01-02 15:04:05")
+
+	if args.ParentAccount != "" {
+		if err := m.validateParentAccount(args.ParentAccount); err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{&mcp.TextContent{Text: err.Error()}},
+				IsError: true,
+			}, nil, nil
+		}
+	}
+
+	account := map[string]interface{}{
+		"name":          args.Name,
+		"rootType":      args.RootType,
+		"accountType":   args.AccountType,
+		"parentAccount": args.ParentAccount,
+		"isGroup":       args.IsGroup,
+		"created":       now,
+		"modified":      now,
+		"createdBy":     "mcp-server",
+		"modifiedBy":    "mcp-server",
+	}
+
+	err := db.Table("Account").Create(&account).Error
+	if err != nil {
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("Error creating account: %v", err)}},
+			IsError: true,
+		}, nil, nil
+	}
+
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("Account %s created successfully", args.Name)}},
+	}, map[string]interface{}{"success": true, "name": args.Name}, nil
+}
+
+// updateAccount handles the update_account tool call.
+func (m *MCPServer) updateAccount(ctx context.Context, req *mcp.CallToolRequest, args UpdateAccountArgs) (*mcp.CallToolResult, map[string]interface{}, error) {
+	db := m.dbManager.GetDB()
+	now := time.Now().Format("2006-01-02 15:04:05")
+
+	if parent, ok := args.Updates["parent_account"].(string); ok && parent != "" {
+		if err := m.validateParentAccount(parent); err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{&mcp.TextContent{Text: err.Error()}},
+				IsError: true,
+			}, nil, nil
+		}
+	}
+
+	args.Updates["modified"] = now
+	args.Updates["modifiedBy"] = "mcp-server"
+
+	err := db.Table("Account").Where("name = ?", args.Name).Updates(args.Updates).Error
+	if err != nil {
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("Error updating account: %v", err)}},
+			IsError: true,
+		}, nil, nil
+	}
+
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("Account %s updated successfully", args.Name)}},
+	}, map[string]interface{}{"success": true}, nil
+}
+
+func (m *MCPServer) validateParentAccount(parentName string) error {
+	db := m.dbManager.GetDB()
+	var parent map[string]interface{}
+	err := db.Table("Account").Where("name = ?", parentName).First(&parent).Error
+	if err != nil {
+		return fmt.Errorf("parent account %s not found", parentName)
+	}
+	
+	isGroup, _ := parent["isGroup"].(int64)
+	if isGroup == 0 {
+		// Try boolean check if driver returns it differently
+		isGroupBool, _ := parent["isGroup"].(bool)
+		if !isGroupBool {
+			return fmt.Errorf("account %s is not a Group account and cannot be a parent", parentName)
+		}
+	}
+	return nil
+}
+
 // createParty handles the create_party tool call.
 func (m *MCPServer) createParty(ctx context.Context, req *mcp.CallToolRequest, args CreatePartyArgs) (*mcp.CallToolResult, CreatePartyResult, error) {
 	db := m.dbManager.GetDB()
@@ -494,6 +634,77 @@ func (m *MCPServer) createInvoice(ctx context.Context, req *mcp.CallToolRequest,
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("%s %s created successfully", args.Type, invoiceName)}},
 	}, CreateInvoiceResult{Success: true, Name: invoiceName}, nil
+}
+
+// createJournalEntry handles the create_journal_entry tool call.
+func (m *MCPServer) createJournalEntry(ctx context.Context, req *mcp.CallToolRequest, args CreateJournalEntryArgs) (*mcp.CallToolResult, map[string]interface{}, error) {
+	db := m.dbManager.GetDB()
+	now := time.Now().Format("2006-01-02 15:04:05")
+
+	var totalDebit, totalCredit float64
+	for _, acc := range args.Accounts {
+		totalDebit += acc.Debit
+		totalCredit += acc.Credit
+	}
+
+	if totalDebit != totalCredit {
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("Journal Entry is not balanced. Total Debit: %.2f, Total Credit: %.2f", totalDebit, totalCredit)}},
+			IsError: true,
+		}, nil, nil
+	}
+
+	jvName := m.generateName("JV")
+
+	err := db.Transaction(func(tx *gorm.DB) error {
+		// Create Child Entries
+		for _, acc := range args.Accounts {
+			itemRow := map[string]interface{}{
+				"name":        m.generateName("JV-Item"),
+				"parent":      jvName,
+				"parenttype":  "JournalEntry",
+				"parentfield": "accounts",
+				"account":     acc.Account,
+				"debit":       acc.Debit,
+				"credit":      acc.Credit,
+				"created":     now,
+				"modified":    now,
+			}
+			if err := tx.Table("JournalEntryAccount").Create(&itemRow).Error; err != nil {
+				return err
+			}
+		}
+
+		// Create Main Entry
+		jvRow := map[string]interface{}{
+			"name":       jvName,
+			"entryType":  args.EntryType,
+			"date":       args.Date,
+			"userRemark": args.Remark,
+			"submitted":  0,
+			"cancelled":  0,
+			"created":    now,
+			"modified":   now,
+			"createdBy":  "mcp-server",
+			"modifiedBy": "mcp-server",
+		}
+		if err := tx.Table("JournalEntry").Create(&jvRow).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("Error creating journal entry: %v", err)}},
+			IsError: true,
+		}, nil, nil
+	}
+
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("Journal Entry %s created successfully", jvName)}},
+	}, map[string]interface{}{"success": true, "name": jvName}, nil
 }
 
 func (m *MCPServer) generateName(prefix string) string {
