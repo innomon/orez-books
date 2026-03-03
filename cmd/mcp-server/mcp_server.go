@@ -10,6 +10,7 @@ import (
 	"orez-books/internal/database"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"gorm.io/gorm"
 )
 
 // MCPServer wraps the Orez Books database manager and exposes it as an MCP server.
@@ -64,6 +65,11 @@ func (m *MCPServer) registerTools() {
 	}, m.getPnL)
 
 	mcp.AddTool(m.server, &mcp.Tool{
+		Name:        "get_balance_sheet",
+		Description: "Get the Balance Sheet as of a specific date",
+	}, m.getBalanceSheet)
+
+	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "create_party",
 		Description: "Create a new Customer or Supplier",
 	}, m.createParty)
@@ -72,6 +78,11 @@ func (m *MCPServer) registerTools() {
 		Name:        "create_item",
 		Description: "Create a new product or service item",
 	}, m.createItem)
+
+	mcp.AddTool(m.server, &mcp.Tool{
+		Name:        "create_invoice",
+		Description: "Create a new Sales or Purchase invoice with line items",
+	}, m.createInvoice)
 }
 
 // listParties handles the list_parties tool call.
@@ -292,6 +303,40 @@ func (m *MCPServer) getPnL(ctx context.Context, req *mcp.CallToolRequest, args G
 	}, nil
 }
 
+// getBalanceSheet handles the get_balance_sheet tool call.
+func (m *MCPServer) getBalanceSheet(ctx context.Context, req *mcp.CallToolRequest, args GetBalanceSheetArgs) (*mcp.CallToolResult, GetBalanceSheetResult, error) {
+	db := m.dbManager.GetDB()
+	var results []BalanceSheetItem
+
+	// Assets, Liabilities, Equity (Debit - Credit)
+	query := db.Table("AccountingLedgerEntry as ale").
+		Select("a.rootType as root_type, SUM(ale.debit) - SUM(ale.credit) as balance").
+		Joins("JOIN Account as a ON a.name = ale.account").
+		Where("a.rootType IN (?) AND ale.date <= ?", []string{"Asset", "Liability", "Equity"}, args.AsOfDate).
+		Group("a.rootType")
+
+	err := query.Scan(&results).Error
+	if err != nil {
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("Error fetching balance sheet: %v", err)}},
+			IsError: true,
+		}, GetBalanceSheetResult{}, nil
+	}
+
+	var text string
+	for _, r := range results {
+		text += fmt.Sprintf("- %s: %.2f\n", r.RootType, r.Balance)
+	}
+
+	if len(results) == 0 {
+		text = "No balance sheet data found."
+	}
+
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{&mcp.TextContent{Text: text}},
+	}, GetBalanceSheetResult{Items: results}, nil
+}
+
 // createParty handles the create_party tool call.
 func (m *MCPServer) createParty(ctx context.Context, req *mcp.CallToolRequest, args CreatePartyArgs) (*mcp.CallToolResult, CreatePartyResult, error) {
 	db := m.dbManager.GetDB()
@@ -355,6 +400,104 @@ func (m *MCPServer) createItem(ctx context.Context, req *mcp.CallToolRequest, ar
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("Item %s created successfully", args.Name)}},
 	}, CreateItemResult{Success: true, Name: args.Name}, nil
+}
+
+// createInvoice handles the create_invoice tool call.
+func (m *MCPServer) createInvoice(ctx context.Context, req *mcp.CallToolRequest, args CreateInvoiceArgs) (*mcp.CallToolResult, CreateInvoiceResult, error) {
+	db := m.dbManager.GetDB()
+	now := time.Now().Format("2006-01-02 15:04:05")
+
+	tableName := "SalesInvoice"
+	itemTableName := "SalesInvoiceItem"
+	if args.Type == "Purchase" {
+		tableName = "PurchaseInvoice"
+		itemTableName = "PurchaseInvoiceItem"
+	}
+
+	invoiceName := m.generateName(args.Type)
+	var netTotal, grandTotal float64
+
+	// Start Transaction
+	err := db.Transaction(func(tx *gorm.DB) error {
+		// Process items and calculate totals
+		for _, itemInput := range args.Items {
+			rate := itemInput.Rate
+			if rate == 0 {
+				// Fetch standard rate from Item table
+				tx.Table("Item").Where("name = ?", itemInput.Item).Select("rate").Scan(&rate)
+			}
+
+			incomeAccount := itemInput.Account
+			if incomeAccount == "" {
+				// Fetch standard account
+				accountField := "incomeAccount"
+				if args.Type == "Purchase" {
+					accountField = "expenseAccount"
+				}
+				tx.Table("Item").Where("name = ?", itemInput.Item).Select(accountField).Scan(&incomeAccount)
+			}
+
+			amount := itemInput.Quantity * rate
+			netTotal += amount
+
+			itemRow := map[string]interface{}{
+				"name":        m.generateName("Item"),
+				"parent":      invoiceName,
+				"parenttype":  tableName,
+				"parentfield": "items",
+				"item":        itemInput.Item,
+				"quantity":    itemInput.Quantity,
+				"rate":        rate,
+				"amount":      amount,
+				"account":     incomeAccount,
+				"created":     now,
+				"modified":    now,
+			}
+
+			if err := tx.Table(itemTableName).Create(&itemRow).Error; err != nil {
+				return err
+			}
+		}
+
+		grandTotal = netTotal // Simplified: no taxes for now
+
+		invoiceRow := map[string]interface{}{
+			"name":              invoiceName,
+			"party":             args.Party,
+			"date":              args.Date,
+			"account":           args.Account,
+			"netTotal":          netTotal,
+			"grandTotal":        grandTotal,
+			"outstandingAmount": grandTotal,
+			"submitted":         0,
+			"cancelled":         0,
+			"created":           now,
+			"modified":          now,
+			"createdBy":         "mcp-server",
+			"modifiedBy":        "mcp-server",
+		}
+
+		if err := tx.Table(tableName).Create(&invoiceRow).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("Error creating invoice: %v", err)}},
+			IsError: true,
+		}, CreateInvoiceResult{Success: false}, nil
+	}
+
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("%s %s created successfully", args.Type, invoiceName)}},
+	}, CreateInvoiceResult{Success: true, Name: invoiceName}, nil
+}
+
+func (m *MCPServer) generateName(prefix string) string {
+	return fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano())
 }
 
 // Run starts the MCP server using the specified transport ("stdio" or "sse").

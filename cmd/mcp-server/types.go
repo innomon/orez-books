@@ -111,4 +111,44 @@ type CreateItemResult struct {
 	Name    string `json:"name"`
 }
 
+// InvoiceItemInput represents a line item for invoice creation.
+type InvoiceItemInput struct {
+	Item     string  `json:"item" jsonschema:"required,Item ID/Name"`
+	Quantity float64 `json:"quantity" jsonschema:"required,Quantity"`
+	Rate     float64 `json:"rate" jsonschema:"optional,Rate (if not provided, standard item rate is used)"`
+	Account  string  `json:"account" jsonschema:"optional,Override income/expense account"`
+}
+
+// CreateInvoiceArgs contains parameters for creating a new invoice.
+type CreateInvoiceArgs struct {
+	Type    string             `json:"type" jsonschema:"required,Sales or Purchase"`
+	Party   string             `json:"party" jsonschema:"required,Customer or Supplier ID/Name"`
+	Date    string             `json:"date" jsonschema:"required,Invoice date (YYYY-MM-DD)"`
+	Items   []InvoiceItemInput `json:"items" jsonschema:"required,Line items"`
+	Account string             `json:"account" jsonschema:"required,Main ledger account (e.g., Debtors or Creditors)"`
+}
+
+// CreateInvoiceResult is the response returned after creating an invoice.
+type CreateInvoiceResult struct {
+	Success bool   `json:"success"`
+	Name    string `json:"name"`
+}
+
+// GetBalanceSheetArgs contains parameters for fetching the balance sheet.
+type GetBalanceSheetArgs struct {
+	AsOfDate string `json:"as_of_date" jsonschema:"required,Report date (YYYY-MM-DD)"`
+}
+
+// BalanceSheetItem represents a root type total in the balance sheet.
+type BalanceSheetItem struct {
+	RootType string  `json:"root_type"`
+	Balance  float64 `json:"balance"`
+}
+
+// GetBalanceSheetResult is the response returned with balance sheet data.
+type GetBalanceSheetResult struct {
+	Items []BalanceSheetItem `json:"items"`
+}
+
+
 
