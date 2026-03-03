@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
@@ -100,6 +101,69 @@ func (m *Manager) Migrate() error {
 
 	// Basic migration for SingleValue table which is core to Frappe Books
 	return m.db.AutoMigrate(&SingleValue{})
+}
+
+func (m *Manager) MigrateFromSchemas(countryCode string) error {
+	loader := NewSchemaLoader()
+	if err := loader.LoadSchemas(countryCode); err != nil {
+		return err
+	}
+
+	for _, schema := range loader.SchemaMap {
+		if schema.IsSingle {
+			continue
+		}
+
+		// Create table dynamically using raw SQL if GORM AutoMigrate is too restrictive
+		// Or use m.db.Table(schema.Name).AutoMigrate(...) if we can define a dynamic struct
+		// For now, let's use a simpler approach: create table if not exists
+		if err := m.createTableFromSchema(schema); err != nil {
+			return fmt.Errorf("failed to create table %s: %w", schema.Name, err)
+		}
+	}
+
+	return nil
+}
+
+func (m *Manager) createTableFromSchema(schema *Schema) error {
+	var columns []string
+	for _, field := range schema.Fields {
+		if field.Computed {
+			continue
+		}
+
+		columnType := m.mapFieldTypeToSQLite(field.Fieldtype)
+		columnDef := fmt.Sprintf("\"%s\" %s", field.Fieldname, columnType)
+		if field.Fieldname == "name" {
+			columnDef += " PRIMARY KEY"
+		}
+		if field.Required && field.Fieldname != "name" {
+			columnDef += " NOT NULL"
+		}
+		if field.Default != nil {
+			// Basic default value handling
+			columnDef += fmt.Sprintf(" DEFAULT '%v'", field.Default)
+		}
+		columns = append(columns, columnDef)
+	}
+
+	query := fmt.Sprintf("CREATE TABLE IF NOT EXISTS \"%s\" (%s)", schema.Name, strings.Join(columns, ", "))
+	return m.db.Exec(query).Error
+}
+
+func (m *Manager) mapFieldTypeToSQLite(ft FieldType) string {
+	switch ft {
+	case FieldTypeInt:
+		return "INTEGER"
+	case FieldTypeFloat, FieldTypeCurrency:
+		return "REAL"
+	case FieldTypeCheck:
+		return "INTEGER" // 0 or 1
+	case FieldTypeDate, FieldTypeDatetime:
+		return "TEXT" // SQLite doesn't have native Date
+	default:
+		return "TEXT"
+	}
 }
 
 func (m *Manager) GetDB() *gorm.DB {

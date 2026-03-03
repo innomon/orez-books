@@ -200,16 +200,15 @@ const ipc = {
 
   store: {
     get(key: string) {
-      const val = localStorage.getItem(`config_${key}`);
-      return val ? JSON.parse(val) : null;
+      return App.ConfigGet(key);
     },
 
     set(key: string, value: any) {
-      localStorage.setItem(`config_${key}`, JSON.stringify(value));
+      return App.ConfigSet(key, value);
     },
 
     delete(key: string) {
-      localStorage.removeItem(`config_${key}`);
+      return App.ConfigDelete(key);
     },
   },
 };

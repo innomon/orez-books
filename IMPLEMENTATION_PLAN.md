@@ -16,7 +16,7 @@
   - [x] Identify and port file system operations.
   - [x] Identify and port data processing tasks.
 - [x] Set up GORM or equivalent Go-based query builder.
-- [ ] Implement database migrations in Go.
+- [x] Implement database migrations in Go (Dynamic schema creation from JSON).
 
 ## Phase 3: Communication Bridge (IPC to Bindings)
 - [x] Define Go methods to be exposed to the frontend.
@@ -25,13 +25,14 @@
 - [x] Verify data flow between Go backend and Vue frontend (Verified via build & Go tests).
 
 ## Phase 4: Native Features & OS Integration
-- [ ] Implement application menus and tray icons using Wails APIs.
-- [ ] Port native dialogs (Open, Save, Alerts) to Wails runtime.
-- [ ] Replace `electron-store` with Go-based persistent configuration (e.g., using `os.UserConfigDir`).
-- [ ] Implement window management logic (maximize, minimize, close) using Wails runtime.
+- [x] Implement application menus using Wails APIs.
+- [ ] Implement tray icons (Optional/Future).
+- [x] Port native dialogs (Open, Save, Alerts) to Wails runtime.
+- [x] Replace `electron-store` with Go-based persistent configuration (e.g., using `os.UserConfigDir`).
+- [x] Implement window management logic (maximize, minimize, close) using Wails runtime.
 
 ## Phase 5: Testing & Optimization
-- [ ] Conduct unit tests for Go backend logic.
+- [x] Conduct unit tests for Go backend logic (Config and Database).
 - [ ] Perform integration tests for frontend-backend communication.
 - [ ] Verify SQLite database compatibility and migration success.
 - [ ] Optimize Go binary size and runtime memory footprint.

@@ -26,6 +26,22 @@ func TestManager_CreateAndConnect(t *testing.T) {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
 
+	// Test MigrateFromSchemas
+	err = m.MigrateFromSchemas("-")
+	if err != nil {
+		t.Fatalf("Failed to migrate from schemas: %v", err)
+	}
+
+	// Verify that a table from schemas exists (e.g., Account)
+	var count int64
+	err = m.db.Raw("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='Account'").Scan(&count).Error
+	if err != nil {
+		t.Fatalf("Failed to check for Account table: %v", err)
+	}
+	if count == 0 {
+		t.Errorf("Account table was not created")
+	}
+
 	// Test Insert into SingleValue (verify schema exists)
 	sv := SingleValue{
 		Name:      "test_setting",

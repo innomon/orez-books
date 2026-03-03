@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"orez-books/internal/config"
 	"orez-books/internal/database"
 
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -16,12 +17,15 @@ import (
 type App struct {
 	ctx       context.Context
 	dbManager *database.Manager
+	config    *config.Config
 }
 
 // NewApp creates a new App application struct
 func NewApp() *App {
+	cfg, _ := config.NewConfig("OrezBooks")
 	return &App{
 		dbManager: database.NewManager(),
+		config:    cfg,
 	}
 }
 
@@ -168,7 +172,7 @@ func (a *App) DbCreate(dbPath string, countryCode string) error {
 	if err != nil {
 		return err
 	}
-	return a.dbManager.Migrate()
+	return a.dbManager.MigrateFromSchemas(countryCode)
 }
 
 // DbConnect connects to an existing database
@@ -177,10 +181,32 @@ func (a *App) DbConnect(dbPath string) error {
 	if err != nil {
 		return err
 	}
-	return a.dbManager.Migrate()
+	// We might want to pass countryCode here too if we store it in config
+	return a.dbManager.MigrateFromSchemas("-")
 }
 
 // DbClose closes the current database connection
 func (a *App) DbClose() error {
 	return a.dbManager.Close()
 }
+
+// ConfigGet returns a config value
+func (a *App) ConfigGet(key string) interface{} {
+	return a.config.Get(key)
+}
+
+// ConfigSet sets a config value
+func (a *App) ConfigSet(key string, value interface{}) error {
+	return a.config.Set(key, value)
+}
+
+// ConfigDelete deletes a config value
+func (a *App) ConfigDelete(key string) error {
+	return a.config.Delete(key)
+}
+
+// ConfigGetAll returns all config values
+func (a *App) ConfigGetAll() map[string]interface{} {
+	return a.config.GetAll()
+}
+
