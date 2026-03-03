@@ -11,6 +11,10 @@ import registerIpcRendererListeners from './renderer/registerIpcRendererListener
 import router from './router';
 import { stringifyCircular } from './utils';
 import { setLanguageMap } from './utils/language';
+import ipc from './utils/ipc';
+
+// @ts-ignore
+window.ipc = ipc;
 
 // eslint-disable-next-line @typescript-eslint/no-floating-promises
 (async () => {

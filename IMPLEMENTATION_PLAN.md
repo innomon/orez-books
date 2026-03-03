@@ -20,8 +20,8 @@
 
 ## Phase 3: Communication Bridge (IPC to Bindings)
 - [x] Define Go methods to be exposed to the frontend.
-- [ ] Use `wails build` or `wails dev` to auto-generate the JS client bindings.
-- [ ] Replace `ipcRenderer` calls in the frontend with Wails bindings.
+- [x] Use `wails build` or `wails dev` to auto-generate the JS client bindings.
+- [x] Replace `ipcRenderer` calls in the frontend with Wails bindings (via new `ipc` abstraction).
 - [ ] Verify data flow between Go backend and Vue frontend.
 
 ## Phase 4: Native Features & OS Integration
