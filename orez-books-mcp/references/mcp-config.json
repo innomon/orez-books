@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "orez-books": {
+      "command": "/path/to/orez-books/build/bin/orez-books-mcp",
+      "args": ["-db", "/path/to/your/company.books.db"]
+    }
+  }
+}
