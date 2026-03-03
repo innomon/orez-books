@@ -26,14 +26,21 @@ The goal of this project is to re-architect **Frappe Books** by replacing the **
 - **Logic Porting:** All business logic currently residing in the Electron main process must be ported to Go.
 - **SQLite Integration:** Replace `better-sqlite3` with a Go-native SQLite implementation. This is critical as it eliminates the need for Node native module rebuilding.
 
-### 4.2 Frontend Integration
-- **IPC Replacement:** Replace all `window.electron.ipcRenderer.send` or `invoke` calls with direct calls to Wails-generated Go bindings (e.g., `window.go.main.App.MethodName`).
-- **Build Pipeline:** Update `vite.config.js` to align with Wails' development and production requirements.
+### 4.2 Database Layer (Complex Porting)
+- **Custom ORM:** Port the logic from `DatabaseCore.ts` (currently using Knex) to a Go-equivalent. This includes:
+  - Dynamic table creation and schema migrations.
+  - Handling of "SingleValue" tables for settings.
+  - CRUD operations with nested "Table" (child) field support.
+  - PRAGMA foreign_key management.
+- **Bespoke Queries:** Port custom SQL logic from `bespoke.ts`.
+- **Patches:** Implement the `runPatch.ts` logic in Go to handle data migrations between versions.
 
-### 4.3 Native Features
-- **Dialogs:** Replace Electron `dialog` with `wails.Runtime.MessageDialog` or `OpenFileDialog`.
-- **Menus/Tray:** Use Wails' built-in Menu and Tray management.
-- **Configuration:** Replace `electron-store` with a Go-based configuration manager (e.g., `viper` or simple JSON handling).
+### 4.3 Native Features Migration
+- **IPC Actions:** Map `ipcMain.handle` actions to Go `App` methods (Bindings).
+- **IPC Messages:** Map `ipcMain.on` messages to Wails `Runtime` events or specific Go handlers.
+- **Dialogs:** Port `dialog.showOpenDialog`, `dialog.showSaveDialog`, and `dialog.showMessageBox` to Wails Runtime Dialogs.
+- **Window Management:** Port window lifecycle events (minimize, maximize, close) to Wails Runtime.
+- **External Links:** Replace `shell.openExternal` with Go's `browser.OpenURL` or equivalent.
 
 ## 5. Performance and Resource Goals
 - **Binary Size:** Reduce the distribution size significantly (Wails binaries are typically < 20MB vs. Electron's 100MB+).

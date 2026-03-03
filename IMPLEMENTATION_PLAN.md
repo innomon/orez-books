@@ -1,17 +1,17 @@
 # Implementation Plan: Frappe Books Re-architecture (Electron to Wails)
 
 ## Phase 1: Preparation & Setup
-- [ ] Research and Document Electron-specific API usage.
-- [ ] Initialize Wails project in the root directory.
+- [x] Research and Document Electron-specific API usage.
+- [x] Initialize Wails project in the root directory.
   - `wails init -n orez-books -t vue`
-- [ ] Configure `wails.json` and project structure.
-- [ ] Integrate existing Vue 3 frontend (from `/src/renderer`) into Wails frontend directory (`/frontend`).
+- [x] Configure `wails.json` and project structure.
+- [x] Integrate existing Vue 3 frontend (from source repo) into Wails frontend directory (`/frontend`).
 - [ ] Verify frontend build pipeline works with Wails.
 
 ## Phase 2: Backend Logic Migration (Go)
 - [ ] Implement Go-based SQLite integration.
-  - [ ] Choose SQLite driver (`github.com/mattn/go-sqlite3` or `modernc.org/sqlite`).
-  - [ ] Implement database connection and management logic in Go.
+  - [x] Choose SQLite driver (`modernc.org/sqlite` chosen for Cgo-free experience).
+  - [x] Implement database connection and management logic in Go.
 - [ ] Port business logic from Electron's main process to Go methods.
   - [ ] Identify and port file system operations.
   - [ ] Identify and port data processing tasks.
