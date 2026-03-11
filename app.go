@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"orez-books/internal/config"
-	"orez-books/internal/database"
+	"orez-books/pkg/config"
+	"orez-books/pkg/database"
 
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )

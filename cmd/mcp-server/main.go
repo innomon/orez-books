@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"orez-books/internal/database"
+	"orez-books/pkg/database"
 )
 
 func main() {

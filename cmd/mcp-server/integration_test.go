@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"orez-books/internal/database"
+	"orez-books/pkg/database"
 )
 
 func TestMCP_Integration(t *testing.T) {

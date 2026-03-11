@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"orez-books/internal/database"
+	"orez-books/pkg/database"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"gorm.io/gorm"
